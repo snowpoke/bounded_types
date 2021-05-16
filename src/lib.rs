@@ -17,10 +17,11 @@ assert!(bounded_ok >= 4);
 assert!(bounded_ok < 100);
 assert!(bounded_ok > -100);
 
-// If an out-of-bounds value is stored, comparisons always return `false`
+// If an out-of-bounds value is stored, equal-checks and unequality-checks always return `false`. unequal-checks return true because ne() has to be the inverse of eq().
 let bounded_err: BoundedI64<2, 10> = 11.into();
 
 assert_eq!(bounded_err == 11, false);
+assert_eq!(bounded_err != 11, true);
 assert_eq!(bounded_err > 5, false);
 ```
 
@@ -178,6 +179,7 @@ macro_rules! generate_type {
         use std::cmp::{PartialEq, PartialOrd};
         use std::convert::TryFrom;
         use std::fmt::Debug;
+        use std::str::FromStr;
 
 #[derive(Shrinkwrap, Constructor)]
 /// The error that is returned when you attempt to assign an out-of-bounds value to a bounded type. This is stored as pointer so that enums containing it won't take up too much space.
@@ -275,6 +277,13 @@ impl<const MIN: $bound, const MAX: $bound> std::fmt::Display for $type<MIN, MAX>
             Ok(val) => write!(f, "{}", val),
             Err(err) => write!(f, "{:?}", err),
         }
+    }
+}
+
+impl<const MIN: $bound, const MAX: $bound> FromStr for $type<MIN, MAX> {
+    type Err = <$bound as FromStr>::Err;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        <$bound>::from_str(s).map($type::from)
     }
 }
 
@@ -591,7 +600,19 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::useless_conversion, dead_code)]
+    fn from_str() {
+        use std::str::FromStr;
+
+        let parsed = i64::from_str("100").unwrap();
+        let parsed_in_bounds = BoundedI64::<0,200>::from_str("100").unwrap();
+        let parsed_out_of_bounds = BoundedI64::<0,50>::from_str("100").unwrap();
+
+        assert!(parsed == parsed_in_bounds);
+        assert!(parsed_out_of_bounds.is_err());
+    }
+
+    #[test]
+    #[allow(clippy::useless_conversion)]
     fn illegal_operations() {
         use trybuild::TestCases;
         let failcheck = TestCases::new();
