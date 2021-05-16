@@ -1,5 +1,5 @@
 use bounded_types::*;
 
 fn main() {
-    let _ok: BoundedInt<'a',255> = 3.into();
+    let _ok: BoundedI64<'a',255> = 3.into();
 }

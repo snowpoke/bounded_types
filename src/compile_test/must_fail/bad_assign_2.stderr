@@ -1,13 +1,13 @@
-error[E0277]: the trait bound `bounded_types::BoundedInt<0_i64, 10_i64>: From<char>` is not satisfied
+error[E0277]: the trait bound `bounded_types::BoundedI64<0_i64, 10_i64>: From<char>` is not satisfied
  --> $DIR/bad_assign_2.rs:4:37
   |
-4 |     let _ok: BoundedInt<0,10> = 'c'.into();
-  |                                     ^^^^ the trait `From<char>` is not implemented for `bounded_types::BoundedInt<0_i64, 10_i64>`
+4 |     let _ok: BoundedI64<0,10> = 'c'.into();
+  |                                     ^^^^ the trait `From<char>` is not implemented for `bounded_types::BoundedI64<0_i64, 10_i64>`
   |
   = help: the following implementations were found:
-            <bounded_types::BoundedInt<MIN, MAX> as From<i128>>
-            <bounded_types::BoundedInt<MIN, MAX> as From<i16>>
-            <bounded_types::BoundedInt<MIN, MAX> as From<i32>>
-            <bounded_types::BoundedInt<MIN, MAX> as From<i64>>
+            <bounded_types::BoundedI64<MIN, MAX> as From<i128>>
+            <bounded_types::BoundedI64<MIN, MAX> as From<i16>>
+            <bounded_types::BoundedI64<MIN, MAX> as From<i32>>
+            <bounded_types::BoundedI64<MIN, MAX> as From<i64>>
           and 8 others
-  = note: required because of the requirements on the impl of `Into<bounded_types::BoundedInt<0_i64, 10_i64>>` for `char`
+  = note: required because of the requirements on the impl of `Into<bounded_types::BoundedI64<0_i64, 10_i64>>` for `char`

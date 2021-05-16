@@ -1,6 +1,28 @@
-//! Provides newtypes `BoundedI32`, `BoundedI64`, etc. which behave similar to their raw counterparts, but guarantee that the value is within a range that you specify.
-//! In contrast to other crates like this, these types are implemented using the newly stabilized const generics feature, which allows for simplifications that make the use of this type more intuitive and idiomatic.
+/*! Provides newtypes `BoundedI32`, `BoundedI64`, etc. which behave similar to their raw counterparts, but guarantee that the value is within a range that you specify.
+In contrast to other crates like this, these types are implemented using the newly stabilized const generics feature, which allows for simplifications that make the use of this type more intuitive and idiomatic.
 
+They are wrappers around a `Result`, but implement traits from integer types like `PartialEq<{Integer}>` and even `Ord<{Integer}>`.
+ 
+ ```
+use bounded_types::BoundedI64;
+
+// If an in-bounds value is stored, comparisons behave like you would expect.
+let bounded_ok: BoundedI64<2, 10> = 5.into();
+
+assert!(bounded_ok == 5);
+assert!(bounded_ok >= 5);
+assert!(bounded_ok >= 4);
+// you can compare with any integer
+assert!(bounded_ok < 100);
+assert!(bounded_ok > -100);
+
+// If an out-of-bounds value is stored, comparisons always return `false`
+let bounded_err: BoundedI64<2, 10> = 11.into();
+
+assert_eq!(bounded_err == 11, false);
+assert_eq!(bounded_err > 5, false);
+```
+*/
 #![deny(
     deprecated_in_future,
     exported_private_dependencies,
@@ -24,60 +46,117 @@
 )]
 #![warn(clippy::pedantic)]
 
-mod i8 {
-    crate::generate_type!(BoundedI8, i8, i8);
+pub use crate::i8::BoundedI8;
+pub use crate::i16::BoundedI16;
+pub use crate::i32::BoundedI32;
+pub use crate::i64::BoundedI64;
+pub use crate::i128::BoundedI128;
+pub use crate::isize::BoundedIsize;
+
+pub use crate::u8::BoundedU8;
+pub use crate::u16::BoundedU16;
+pub use crate::u32::BoundedU32;
+pub use crate::u64::BoundedU64;
+pub use crate::u128::BoundedU128;
+pub use crate::usize::BoundedUsize;
+
+#[macro_use]
+/// Derives traits that define the relation to other numeric types. Like From, PartialEq, PartialOrd.
+macro_rules! derive_numeric_traits {
+    ( $type: ident, $bound:ty, $int:ty; $( $numeric:ty ),* )  => {
+        $(
+
+        impl<const MIN: $bound, const MAX: $bound> From<$numeric> for $type<MIN, MAX> {
+            fn from(other: $numeric) -> Self {
+                match <$int>::try_from(other) {
+                    Ok(this) => {
+                        if Self::is_in_bounds(&this) {
+                            Self(Ok(this))
+                        } else {
+                            Self::out_of_bounds(this)
+                        }
+                    }
+                    // if we try to cast from a number that cannot be parsed as $int, we save $int::MAX as error value
+                    Err(_) => Self::out_of_bounds(<$int>::MAX),
+                }
+            }
+        }
+
+        // impl Add<$numeric> for Unbounded<UnboundedVal, $int, Bound> {
+        //     type Output = Unbounded<UnboundedVal, $int, Bound>;
+        //     fn add(self, other: $numeric) -> Self::Output {
+        //         #[allow(trivial_numeric_casts)]
+        //         match self.0 {
+        //             Ok(self_val) => Ok(self_val + (other as UnboundedVal)).into(),
+        //             Err((self_carryover, self_errvec)) => Err((self_carryover + (other as UnboundedVal), self_errvec)).into()
+        //         }
+        //     }
+        // }
+
+        // /// Deduced through Add<$numeric> for Unbounded.
+        // impl<const MIN: Bound, const MAX: Bound> Add<$numeric> for $type<MIN, MAX> {
+        //     type Output = Unbounded<UnboundedVal, $int, Bound>;
+        //     #[allow(trivial_numeric_casts)]
+        //     fn add(self, other: $numeric) -> Self::Output {
+        //         self.into_unbounded() + (other as UnboundedVal)
+        //     }
+        // }
+
+
+        // /// Deduced through symmetry.
+        // impl<const MIN: Bound, const MAX: Bound> Add<$type<MIN, MAX>> for $numeric {
+        //     type Output = Unbounded<UnboundedVal, $int, Bound>;
+        //     #[allow(trivial_numeric_casts)]
+        //     fn add(self, other: $type<MIN, MAX>) -> Self::Output {
+        //         other + self
+        //     }
+        // }
+
+
+        impl<const MIN: $bound, const MAX: $bound> PartialEq<$numeric> for $type<MIN, MAX> {
+            // will throw false if values don't match or Numeric can't be cast as $int
+            fn eq(&self, other: &$numeric) -> bool {
+                match (&self.0, <$int>::try_from(*other)) {
+                    (&Ok(val), Ok(other)) => val == other,
+                    _ => false,
+                }
+            }
+        }
+
+        impl<const MIN: $bound, const MAX: $bound> PartialOrd<$numeric> for $type<MIN, MAX> {
+            // will throw false if values don't match or Numeric can't be cast as $int
+            fn partial_cmp(&self, other: &$numeric) -> Option<Ordering> {
+                match (&self.0, <$int>::try_from(*other)) {
+                    (Ok(self_val), Ok(other_val)) => self_val.partial_cmp(&other_val),
+                    _ => None,
+                }
+            }
+        }
+
+        /// Inferred through symmetry.
+        impl<const MIN: $bound, const MAX: $bound> PartialEq<$type<MIN, MAX>> for $numeric {
+            fn eq(&self, other: &$type<MIN, MAX>) -> bool {
+                other == self
+            }
+        }
+
+        /// Inferred through assymetry.
+        impl<const MIN: $bound, const MAX: $bound> PartialOrd<$type<MIN, MAX>> for $numeric {
+            fn partial_cmp(&self, other: &$type<MIN, MAX>) -> Option<Ordering> {
+                other.partial_cmp(self).map(Ordering::reverse)
+            }
+        }
+
+    )*
+    };
 }
 
-mod i16 {
-    crate::generate_type!(BoundedI16, i16, i16);
-}
-
-mod i32 {
-    crate::generate_type!(BoundedI32, i32, i32);
-}
-
-mod i64 {
-    crate::generate_type!(BoundedI64, i64, i64);
-}
-
-mod i128 {
-    crate::generate_type!(BoundedI128, i128, i128);
-}
-
-mod isize {
-    crate::generate_type!(BoundedIsize, isize, isize);
-}
-
-mod u8 {
-    crate::generate_type!(BoundedU8, u8, u8);
-}
-
-mod u16 {
-    crate::generate_type!(BoundedU16, u16, u16);
-}
-
-mod u32 {
-    crate::generate_type!(BoundedU32, u32, u32);
-}
-
-mod u64 {
-    crate::generate_type!(BoundedU64, u64, u64);
-}
-
-mod u128 {
-    crate::generate_type!(BoundedU128, u128, u128);
-}
-
-mod usize {
-    crate::generate_type!(BoundedUsize, usize, usize);
-}
-
-// /// Numeric type stored within Unbounded, the type produced after operations are performed on `BoundedInt` elements. This should be larger or equal in size to Int.
+// /// Numeric type stored within Unbounded, the type produced after operations are performed on `BoundedI64` elements. This should be larger or equal in size to Int.
 // /// Int = `UnboundedVal` seems natural for Int = i32, but for Int = usize, you might want `UnboundedVal` to be larger (like i128), so Int and `UnboundedVal` are separate.
 // type UnboundedVal = i64;
 
 /// Generates a bounded type with the specified type name, bound type and value type.
-#[macro_export]
+#[macro_use]
 macro_rules! generate_type {
     ( $type: ident, $bound:ty, $int:ty )   => {
         use derive_more::Constructor;
@@ -125,7 +204,7 @@ impl<const MIN: $bound, const MAX: $bound> Debug for OutOfBoundsError<MIN, MAX> 
 }
 
 #[derive(Shrinkwrap, Debug)]
-/// An $int element that is forced to be within the inclusive range MIN..=MAX. It is a wrapper around a Result type, but implements Deref and other convenience traits so it can often be treated like an unwrapped $int element.
+#[doc="An `$int` element that is forced to be within the inclusive range `MIN..=MAX`."]
 pub struct $type<const MIN: $bound, const MAX: $bound>(
     Result<$int, OutOfBoundsError<MIN, MAX>>,
 );
@@ -243,103 +322,61 @@ impl<const MIN: $bound, const MAX: $bound> PartialOrd for $type<MIN, MAX> {
 
 
 // allow for some operations and comparisons with regular integer types.
-crate::derive_numeric_traits!($type, $bound, $int; u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+derive_numeric_traits!($type, $bound, $int; u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 
 
     };
 }
 
-#[macro_export]
-/// Derives traits that define the relation to other numeric types. Like From, PartialEq, PartialOrd.
-macro_rules! derive_numeric_traits {
-    ( $type: ident, $bound:ty, $int:ty; $( $numeric:ty ),* )  => {
-        $(
-
-        impl<const MIN: $bound, const MAX: $bound> From<$numeric> for $type<MIN, MAX> {
-            fn from(other: $numeric) -> Self {
-                match <$int>::try_from(other) {
-                    Ok(this) => {
-                        if Self::is_in_bounds(&this) {
-                            Self(Ok(this))
-                        } else {
-                            Self::out_of_bounds(this)
-                        }
-                    }
-                    // if we try to cast from a number that cannot be parsed as $int, we save $int::MAX as error value
-                    Err(_) => Self::out_of_bounds(<$int>::MAX),
-                }
-            }
-        }
-
-        // impl Add<$numeric> for Unbounded<UnboundedVal, $int, Bound> {
-        //     type Output = Unbounded<UnboundedVal, $int, Bound>;
-        //     fn add(self, other: $numeric) -> Self::Output {
-        //         #[allow(trivial_numeric_casts)]
-        //         match self.0 {
-        //             Ok(self_val) => Ok(self_val + (other as UnboundedVal)).into(),
-        //             Err((self_carryover, self_errvec)) => Err((self_carryover + (other as UnboundedVal), self_errvec)).into()
-        //         }
-        //     }
-        // }
-
-        // /// Deduced through Add<$numeric> for Unbounded.
-        // impl<const MIN: Bound, const MAX: Bound> Add<$numeric> for $type<MIN, MAX> {
-        //     type Output = Unbounded<UnboundedVal, $int, Bound>;
-        //     #[allow(trivial_numeric_casts)]
-        //     fn add(self, other: $numeric) -> Self::Output {
-        //         self.into_unbounded() + (other as UnboundedVal)
-        //     }
-        // }
-
-
-        // /// Deduced through symmetry.
-        // impl<const MIN: Bound, const MAX: Bound> Add<$type<MIN, MAX>> for $numeric {
-        //     type Output = Unbounded<UnboundedVal, $int, Bound>;
-        //     #[allow(trivial_numeric_casts)]
-        //     fn add(self, other: $type<MIN, MAX>) -> Self::Output {
-        //         other + self
-        //     }
-        // }
-
-
-        impl<const MIN: $bound, const MAX: $bound> PartialEq<$numeric> for $type<MIN, MAX> {
-            // will throw false if values don't match or Numeric can't be cast as $int
-            fn eq(&self, other: &$numeric) -> bool {
-                match (&self.0, <$int>::try_from(*other)) {
-                    (&Ok(val), Ok(other)) => val == other,
-                    _ => false,
-                }
-            }
-        }
-
-        impl<const MIN: $bound, const MAX: $bound> PartialOrd<$numeric> for $type<MIN, MAX> {
-            // will throw false if values don't match or Numeric can't be cast as $int
-            fn partial_cmp(&self, other: &$numeric) -> Option<Ordering> {
-                match (&self.0, <$int>::try_from(*other)) {
-                    (Ok(self_val), Ok(other_val)) => self_val.partial_cmp(&other_val),
-                    _ => None,
-                }
-            }
-        }
-
-        /// Inferred through symmetry.
-        impl<const MIN: $bound, const MAX: $bound> PartialEq<$type<MIN, MAX>> for $numeric {
-            fn eq(&self, other: &$type<MIN, MAX>) -> bool {
-                other == self
-            }
-        }
-
-        /// Inferred through assymetry.
-        impl<const MIN: $bound, const MAX: $bound> PartialOrd<$type<MIN, MAX>> for $numeric {
-            fn partial_cmp(&self, other: &$type<MIN, MAX>) -> Option<Ordering> {
-                other.partial_cmp(self).map(Ordering::reverse)
-            }
-        }
-
-    )*
-    };
+mod i8 {
+    generate_type!(BoundedI8, i8, i8);
 }
+
+mod i16 {
+    generate_type!(BoundedI16, i16, i16);
+}
+
+mod i32 {
+    generate_type!(BoundedI32, i32, i32);
+}
+
+mod i64 {
+    generate_type!(BoundedI64, i64, i64);
+}
+
+mod i128 {
+    generate_type!(BoundedI128, i128, i128);
+}
+
+mod isize {
+    generate_type!(BoundedIsize, isize, isize);
+}
+
+mod u8 {
+    generate_type!(BoundedU8, u8, u8);
+}
+
+mod u16 {
+    generate_type!(BoundedU16, u16, u16);
+}
+
+mod u32 {
+    generate_type!(BoundedU32, u32, u32);
+}
+
+mod u64 {
+    generate_type!(BoundedU64, u64, u64);
+}
+
+mod u128 {
+    generate_type!(BoundedU128, u128, u128);
+}
+
+mod usize {
+    generate_type!(BoundedUsize, usize, usize);
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -540,10 +577,9 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::useless_conversion)]
+    #[allow(clippy::useless_conversion, dead_code)]
     fn illegal_operations() {
         use trybuild::TestCases;
-
         let failcheck = TestCases::new();
         failcheck.compile_fail("src/compile_test/must_fail/*.rs");
 

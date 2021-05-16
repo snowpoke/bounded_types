@@ -1,5 +1,5 @@
 use bounded_types::*;
 
 fn main() {
-    let _ok: BoundedInt<0,10> = 'c'.into();
+    let _ok: BoundedI64<0,10> = 'c'.into();
 }

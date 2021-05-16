@@ -1,7 +1,7 @@
-error[E0277]: can't compare `bounded_types::BoundedInt<0_i64, 10_i64>` with `bool`
+error[E0277]: can't compare `bounded_types::BoundedI64<0_i64, 10_i64>` with `bool`
  --> $DIR/bad_compare_1.rs:6:16
   |
 6 |     assert!(ok == b);
-  |                ^^ no implementation for `bounded_types::BoundedInt<0_i64, 10_i64> == bool`
+  |                ^^ no implementation for `bounded_types::BoundedI64<0_i64, 10_i64> == bool`
   |
-  = help: the trait `PartialEq<bool>` is not implemented for `bounded_types::BoundedInt<0_i64, 10_i64>`
+  = help: the trait `PartialEq<bool>` is not implemented for `bounded_types::BoundedI64<0_i64, 10_i64>`
