@@ -1,0 +1,5 @@
+error[E0308]: mismatched types
+ --> $DIR/bad_bounds_2.rs:4:25
+  |
+4 |     let _ok: BoundedInt<'a',255> = 3.into();
+  |                         ^^^ expected `i64`, found `char`

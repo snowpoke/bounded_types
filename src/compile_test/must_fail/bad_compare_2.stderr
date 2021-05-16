@@ -1,0 +1,7 @@
+error[E0600]: cannot apply unary operator `!` to type `bounded_types::BoundedInt<0_i64, 10_i64>`
+ --> $DIR/bad_compare_2.rs:5:5
+  |
+5 |     assert!(ok);
+  |     ^^^^^^^^^^^^ cannot apply unary operator `!`
+  |
+  = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)

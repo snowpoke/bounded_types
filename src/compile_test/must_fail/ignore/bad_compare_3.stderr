@@ -1,0 +1,7 @@
+error[E0369]: binary operation `==` cannot be applied to type `bounded_types::Unbounded<isize, isize>`
+ --> $DIR/bad_compare_3.rs:6:23
+  |
+6 |     assert!(unbounded == 1);
+  |             --------- ^^ - {integer}
+  |             |
+  |             bounded_types::Unbounded<isize, isize>

@@ -1,0 +1,18 @@
+[package]
+authors = ["snowpoke <hello@snowpoke.ink>"]
+description = "Provides a type representing bounded integers, implemented using const generics."
+edition = "2018"
+license = "MIT OR Apache-2.0"
+name = "bounded_types"
+repository = ""
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+derive_more = {version = "0.99.13", default-features = false, features = ["constructor"]}
+shrinkwraprs = "0.3.0"
+
+[dev-dependencies]
+assert2 = "0.3.5"
+trybuild = "1.0.42"
