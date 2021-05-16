@@ -1,8 +1,9 @@
 /*! Provides newtypes `BoundedI32`, `BoundedI64`, etc. which behave similar to their raw counterparts, but guarantee that the value is within a range that you specify.
 In contrast to other crates like this, these types are implemented using the newly stabilized const generics feature, which allows for simplifications that make the use of this type more intuitive and idiomatic.
 
-They are wrappers around a `Result`, but implement traits from integer types like `PartialEq<{Integer}>` and even `Ord<{Integer}>`.
- 
+They are wrappers around a `Result`, but implement traits like `PartialEq<{Integer}>` and even `Ord<{Integer}>` that make them act like integers in many ways. Some traits (like `Add`, for example) are intentionally not implemented, since those would be invalid on out-of-bounds values.
+
+## Example
  ```
 use bounded_types::BoundedI64;
 
@@ -21,6 +22,18 @@ let bounded_err: BoundedI64<2, 10> = 11.into();
 
 assert_eq!(bounded_err == 11, false);
 assert_eq!(bounded_err > 5, false);
+```
+
+## Memory use
+```
+use bounded_types::*;
+use std::mem::size_of;
+assert!(size_of::<Option<i8>>() == size_of::<BoundedI8<0, 10>>());
+assert!(size_of::<Option<i16>>() == size_of::<BoundedI16<0, 10>>());
+assert!(size_of::<Option<i32>>() == size_of::<BoundedI32<0, 10>>());
+assert!(size_of::<Option<i64>>() == size_of::<BoundedI64<0, 10>>());
+assert!(size_of::<Option<i128>>() == size_of::<BoundedI128<0, 10>>());
+// etc. you get the idea
 ```
 */
 #![deny(
@@ -46,18 +59,18 @@ assert_eq!(bounded_err > 5, false);
 )]
 #![warn(clippy::pedantic)]
 
-pub use crate::i8::BoundedI8;
+pub use crate::i128::BoundedI128;
 pub use crate::i16::BoundedI16;
 pub use crate::i32::BoundedI32;
 pub use crate::i64::BoundedI64;
-pub use crate::i128::BoundedI128;
+pub use crate::i8::BoundedI8;
 pub use crate::isize::BoundedIsize;
 
-pub use crate::u8::BoundedU8;
+pub use crate::u128::BoundedU128;
 pub use crate::u16::BoundedU16;
 pub use crate::u32::BoundedU32;
 pub use crate::u64::BoundedU64;
-pub use crate::u128::BoundedU128;
+pub use crate::u8::BoundedU8;
 pub use crate::usize::BoundedUsize;
 
 #[macro_use]
@@ -203,11 +216,13 @@ impl<const MIN: $bound, const MAX: $bound> Debug for OutOfBoundsError<MIN, MAX> 
     }
 }
 
+paste::paste!{
 #[derive(Shrinkwrap, Debug)]
-#[doc="An `$int` element that is forced to be within the inclusive range `MIN..=MAX`."]
+#[doc="An `" $int "` element that is forced to be within the inclusive range `MIN..=MAX`."]
 pub struct $type<const MIN: $bound, const MAX: $bound>(
     Result<$int, OutOfBoundsError<MIN, MAX>>,
 );
+}
 
 
 // /// A compound error type that stores result and errors of multiple operations between bounded values.
@@ -376,7 +391,6 @@ mod u128 {
 mod usize {
     generate_type!(BoundedUsize, usize, usize);
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -595,49 +609,20 @@ mod tests {
 
     #[test]
     fn test_sizeof() {
+        use super::*;
         use std::mem::size_of;
-        assert_eq!(
-            size_of::<Option<i8>>(),
-            size_of::<super::i8::BoundedI8<0, 10>>()
-        );
-        assert_eq!(
-            size_of::<Option<i16>>(),
-            size_of::<super::i16::BoundedI16<0, 10>>()
-        );
-        assert_eq!(
-            size_of::<Option<i32>>(),
-            size_of::<super::i32::BoundedI32<0, 10>>()
-        );
-        assert_eq!(size_of::<Option<i64>>(), size_of::<BoundedI64<0, 10>>());
-        assert_eq!(
-            size_of::<Option<i128>>(),
-            size_of::<super::i128::BoundedI128<0, 10>>()
-        );
-        assert_eq!(
-            size_of::<Option<isize>>(),
-            size_of::<super::isize::BoundedIsize<0, 10>>()
-        );
+        assert!(size_of::<Option<i8>>() == size_of::<BoundedI8<0, 10>>());
+        assert!(size_of::<Option<i16>>() == size_of::<BoundedI16<0, 10>>());
+        assert!(size_of::<Option<i32>>() == size_of::<BoundedI32<0, 10>>());
+        assert!(size_of::<Option<i64>>() == size_of::<BoundedI64<0, 10>>());
+        assert!(size_of::<Option<i128>>() == size_of::<BoundedI128<0, 10>>());
+        assert!(size_of::<Option<isize>>() == size_of::<BoundedIsize<0, 10>>());
 
-        assert_eq!(
-            size_of::<Option<u8>>(),
-            size_of::<super::u8::BoundedU8<0, 10>>()
-        );
-        assert_eq!(
-            size_of::<Option<u16>>(),
-            size_of::<super::u16::BoundedU16<0, 10>>()
-        );
-        assert_eq!(
-            size_of::<Option<u32>>(),
-            size_of::<super::u32::BoundedU32<0, 10>>()
-        );
-        assert_eq!(size_of::<Option<u64>>(), size_of::<BoundedI64<0, 10>>());
-        assert_eq!(
-            size_of::<Option<u128>>(),
-            size_of::<super::u128::BoundedU128<0, 10>>()
-        );
-        assert_eq!(
-            size_of::<Option<usize>>(),
-            size_of::<super::usize::BoundedUsize<0, 10>>()
-        );
+        assert!(size_of::<Option<u8>>() == size_of::<BoundedU8<0, 10>>());
+        assert!(size_of::<Option<u16>>() == size_of::<BoundedU16<0, 10>>());
+        assert!(size_of::<Option<u32>>() == size_of::<BoundedU32<0, 10>>());
+        assert!(size_of::<Option<u64>>() == size_of::<BoundedI64<0, 10>>());
+        assert!(size_of::<Option<u128>>() == size_of::<BoundedU128<0, 10>>());
+        assert!(size_of::<Option<usize>>() == size_of::<BoundedUsize<0, 10>>());
     }
 }
