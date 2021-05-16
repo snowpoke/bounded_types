@@ -7,13 +7,14 @@ keywords = ["bounded", "int", "integer", "limited", "numbers"]
 license = "MIT OR Apache-2.0"
 name = "bounded_types"
 repository = "https://github.com/snowpoke/bounded_types.git"
-version = "0.2.0"
+version = "0.2.1"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 derive_more = {version = "0.99.13", default-features = false, features = ["constructor"]}
 paste = "1.0.5"
+serde = {version = "1.0", features = ["derive"]}
 shrinkwraprs = "0.3.0"
 
 [dev-dependencies]

@@ -180,8 +180,10 @@ macro_rules! generate_type {
         use std::convert::TryFrom;
         use std::fmt::Debug;
         use std::str::FromStr;
+        use serde::{Serialize, Deserialize};
 
-#[derive(Shrinkwrap, Constructor)]
+#[derive(Shrinkwrap, Constructor, Copy, Clone)]
+#[derive(Serialize, Deserialize)]
 /// The error that is returned when you attempt to assign an out-of-bounds value to a bounded type. This is stored as pointer so that enums containing it won't take up too much space.
 pub struct OutOfBoundsError<const MIN: $bound, const MAX: $bound>($int);
 
@@ -219,7 +221,8 @@ impl<const MIN: $bound, const MAX: $bound> Debug for OutOfBoundsError<MIN, MAX> 
 }
 
 paste::paste!{
-#[derive(Shrinkwrap, Debug)]
+#[derive(Shrinkwrap, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize)]
 #[doc="An `" $int "` element that is forced to be within the inclusive range `MIN..=MAX`."]
 pub struct $type<const MIN: $bound, const MAX: $bound>(
     Result<$int, OutOfBoundsError<MIN, MAX>>,
